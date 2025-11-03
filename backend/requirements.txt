@@ -5,7 +5,7 @@ python-dotenv
 flask-cors
 apscheduler
 gunicorn
-moviepy==1.0.3
-Pillow>=10.2.0
+moviepy>=2.0.0,<3.0.0
+Pillow>=10.2.0,<11.0.0
 numpy>=1.26.0
-imageio-ffmpeg==0.4.9
+imageio-ffmpeg==0.5.1
