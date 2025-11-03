@@ -2,7 +2,7 @@
  * Centralized API service for all backend endpoints
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://video2reel.onrender.com'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000'
 
 interface ApiResponse<T = any> {
   success: boolean

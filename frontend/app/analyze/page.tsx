@@ -3,9 +3,10 @@
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Loader2, Play, Sparkles } from "lucide-react"
+import { Loader2, Play, Sparkles, FileText, Zap } from "lucide-react"
 import { api } from "@/lib/api"
 import { HLSVideoPlayer } from "@/components/hls-video-player"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface VideoDetails {
   id: string
@@ -246,139 +247,185 @@ export default function AnalyzePage() {
                 </div>
               </div>
 
-              {/* Right Side - Analysis */}
+              {/* Right Side - Analysis with Tabs */}
               <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-xl p-6 border border-gray-200">
                 <div className="flex items-center gap-2 mb-4">
                   <Sparkles className="w-5 h-5 text-gray-700" />
-                  <h2 className="text-xl font-bold text-gray-900">AI Analysis</h2>
+                  <h2 className="text-xl font-bold text-gray-900">AI Insights</h2>
                 </div>
 
-                <div className="space-y-4">
-                  {/* Analysis Section */}
-                  {isAnalyzing ? (
-                    <div className="flex flex-col items-center justify-center py-12">
-                      <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
-                      <p className="text-gray-600 text-center mb-2">Analyzing video content...</p>
-                      <p className="text-sm text-gray-500 text-center">
-                        AI is identifying key moments and highlights
-                      </p>
-                    </div>
-                  ) : analysis ? (
-                    <>
-                      <div className="bg-gray-50 rounded-2xl p-6 max-h-64 overflow-y-auto">
-                        <div className="prose prose-sm max-w-none">
-                          <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{analysis}</p>
-                        </div>
-                      </div>
+                {isAnalyzing && isLoadingHighlights ? (
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <Loader2 className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+                    <p className="text-gray-600 text-center mb-2">Analyzing video content...</p>
+                    <p className="text-sm text-gray-500 text-center">
+                      AI is identifying key moments and highlights
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <Tabs defaultValue="highlights" className="w-full">
+                      <TabsList className="grid w-full grid-cols-2 mb-4">
+                        <TabsTrigger value="highlights" className="flex items-center gap-2">
+                          <Zap className="w-4 h-4" />
+                          Highlights ({highlights.length})
+                        </TabsTrigger>
+                        <TabsTrigger value="analysis" className="flex items-center gap-2">
+                          <FileText className="w-4 h-4" />
+                          Analysis
+                        </TabsTrigger>
+                      </TabsList>
 
-                      {/* Highlights Section */}
-                      {isLoadingHighlights ? (
-                        <div className="bg-gray-50 rounded-2xl p-6">
-                          <div className="flex items-center justify-center gap-2 text-gray-600">
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span className="text-sm">Loading highlights...</span>
+                      {/* Highlights Tab */}
+                      <TabsContent value="highlights" className="space-y-4 mt-2">
+                        {isLoadingHighlights ? (
+                          <div className="bg-gray-50 rounded-2xl p-6">
+                            <div className="flex items-center justify-center gap-2 text-gray-600">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-sm">Loading highlights...</span>
+                            </div>
                           </div>
-                        </div>
-                      ) : highlights.length > 0 ? (
-                        <div className="bg-gray-50 rounded-2xl p-6">
-                          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                            <Sparkles className="w-4 h-4 text-blue-600" />
-                            Detected Highlights ({highlights.length})
-                          </h3>
-                          <div className="space-y-3 max-h-64 overflow-y-auto">
-                            {highlights.map((highlight, index) => (
-                              <div
-                                key={index}
-                                className="bg-white rounded-lg p-3 border border-gray-200 hover:border-blue-300 transition-colors"
-                              >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-gray-900 text-sm truncate" title={highlight.title}>
-                                      {index + 1}. {highlight.title}
-                                    </p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                                        <svg
-                                          className="w-3 h-3"
-                                          fill="none"
-                                          viewBox="0 0 24 24"
-                                          stroke="currentColor"
-                                        >
-                                          <path
-                                            strokeLinecap="round"
-                                            strokeLinejoin="round"
-                                            strokeWidth={2}
-                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                          />
-                                        </svg>
-                                        {Math.floor(highlight.start)}s - {Math.floor(highlight.end)}s
-                                      </span>
-                                      <span className="text-xs text-gray-400">•</span>
-                                      <span className="text-xs text-gray-500">
-                                        {Math.floor(highlight.end - highlight.start)}s duration
-                                      </span>
+                        ) : highlights.length > 0 ? (
+                          <>
+                            <div className="text-sm text-gray-600 mb-3 px-1">
+                              Found {highlights.length} highlight{highlights.length !== 1 ? 's' : ''} ready to convert into reels
+                            </div>
+                            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                              {highlights.map((highlight, index) => (
+                                <div
+                                  key={index}
+                                  className="bg-gradient-to-r from-blue-50 to-green-50 rounded-xl p-4 border-2 border-blue-200 hover:border-blue-400 transition-all hover:shadow-md cursor-pointer"
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0 w-9 h-9 bg-gradient-to-r from-blue-600 to-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                      {index + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-semibold text-gray-900 text-base mb-2 leading-tight" title={highlight.title}>
+                                        {highlight.title}
+                                      </p>
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="flex items-center gap-1.5 text-gray-700 bg-green-100 px-3 py-1.5 rounded-full font-medium text-xs border border-green-300">
+                                          <svg
+                                            className="w-3.5 h-3.5 text-green-600"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                            />
+                                          </svg>
+                                          <span className="font-semibold">{Math.floor(highlight.start)}s - {Math.floor(highlight.end)}s</span>
+                                        </span>
+                                        <span className="flex items-center gap-1.5 text-green-700 bg-green-50 px-3 py-1.5 rounded-full font-semibold text-xs border border-green-200">
+                                          <svg
+                                            className="w-3.5 h-3.5 text-green-600"
+                                            fill="none"
+                                            viewBox="0 0 24 24"
+                                            stroke="currentColor"
+                                          >
+                                            <path
+                                              strokeLinecap="round"
+                                              strokeLinejoin="round"
+                                              strokeWidth={2}
+                                              d="M5 13l4 4L19 7"
+                                            />
+                                          </svg>
+                                          {Math.floor(highlight.end - highlight.start)}s duration
+                                        </span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              ))}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
+                            <Sparkles className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <p className="font-medium">No highlights detected yet</p>
+                            <p className="text-sm mt-1">Waiting for AI to analyze the video...</p>
                           </div>
-                        </div>
-                      ) : null}
-
-                      {/* Action Button */}
-                      <div className="pt-4">
-                        <Button
-                          size="lg"
-                          className="w-full bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 text-white rounded-full px-8 text-lg font-semibold"
-                          onClick={handleEditIntoReel}
-                          disabled={isGeneratingReels || highlights.length === 0}
-                        >
-                          {isGeneratingReels ? (
-                            <>
-                              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                              Generating Reels...
-                            </>
-                          ) : (
-                            <>
-                              <Sparkles className="w-5 h-5 mr-2" />
-                              Edit into Reels ({highlights.length})
-                            </>
-                          )}
-                        </Button>
-
-                        {highlights.length === 0 && !isLoadingHighlights && (
-                          <p className="text-sm text-gray-500 text-center mt-2">
-                            Waiting for highlights to load...
-                          </p>
                         )}
+                      </TabsContent>
 
-                        {isGeneratingReels && (
-                          <div className="mt-4 text-center">
-                            <p className="text-sm text-gray-600 mb-2">
-                              Creating {highlights.length} reels with captions...
-                            </p>
-                            <div className="flex items-center justify-center gap-2">
-                              <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" />
-                              <div
-                                className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.1s" }}
-                              />
-                              <div
-                                className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
-                                style={{ animationDelay: "0.2s" }}
-                              />
+                      {/* Analysis Tab */}
+                      <TabsContent value="analysis" className="space-y-4 mt-2">
+                        {isAnalyzing ? (
+                          <div className="bg-gray-50 rounded-2xl p-6">
+                            <div className="flex items-center justify-center gap-2 text-gray-600">
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span className="text-sm">Analyzing...</span>
                             </div>
                           </div>
+                        ) : analysis ? (
+                          <div className="bg-gray-50 rounded-2xl p-6 max-h-96 overflow-y-auto">
+                            <div className="prose prose-sm max-w-none">
+                              <p className="whitespace-pre-wrap text-gray-700 leading-relaxed text-sm">{analysis}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-xl">
+                            <FileText className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                            <p className="font-medium">No analysis available</p>
+                            <p className="text-sm mt-1">AI analysis will appear here...</p>
+                          </div>
                         )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-12 text-gray-500">
-                      <p>No analysis available</p>
+                      </TabsContent>
+                    </Tabs>
+
+                    {/* Action Button */}
+                    <div className="pt-4 mt-4 border-t">
+                      <Button
+                        size="lg"
+                        className="w-full bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 text-white rounded-full px-8 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                        onClick={handleEditIntoReel}
+                        disabled={isGeneratingReels || highlights.length === 0}
+                      >
+                        {isGeneratingReels ? (
+                          <>
+                            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                            Generating Reels...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2" />
+                            Edit into Reels ({highlights.length})
+                          </>
+                        )}
+                      </Button>
+
+                      {highlights.length === 0 && !isLoadingHighlights && (
+                        <p className="text-sm text-gray-500 text-center mt-2">
+                          Waiting for highlights to load...
+                        </p>
+                      )}
+
+                      {isGeneratingReels && (
+                        <div className="mt-4 text-center">
+                          <p className="text-sm text-gray-600 mb-2">
+                            Creating {highlights.length} reels with captions...
+                          </p>
+                          <div className="flex items-center justify-center gap-2">
+                            <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" />
+                            <div
+                              className="w-2 h-2 bg-green-500 rounded-full animate-bounce"
+                              style={{ animationDelay: "0.1s" }}
+                            />
+                            <div
+                              className="w-2 h-2 bg-blue-600 rounded-full animate-bounce"
+                              style={{ animationDelay: "0.2s" }}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
+                  </>
+                )}
               </div>
             </div>
           )}
