@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 import { Loader2, Play, Sparkles } from "lucide-react"
 import { api } from "@/lib/api"
+import { HLSVideoPlayer } from "@/components/hls-video-player"
 
 interface VideoDetails {
   id: string
@@ -204,36 +205,12 @@ export default function AnalyzePage() {
                   {/* Video Player */}
                   <div className="relative rounded-2xl overflow-hidden bg-black aspect-video">
                     {videoDetails?.video_url ? (
-                      <>
-                        {videoDetails.video_url.includes('.m3u8') ? (
-                          // HLS video - show thumbnail with message
-                          <div className="relative w-full h-full">
-                            {videoDetails.thumbnail_url && (
-                              <img
-                                src={videoDetails.thumbnail_url}
-                                alt={videoDetails.name}
-                                className="w-full h-full object-contain"
-                              />
-                            )}
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                              <div className="text-center text-white p-4">
-                                <Play className="w-12 h-12 mx-auto mb-2" />
-                                <p className="text-sm">Preview available after processing</p>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          // Regular MP4 video
-                          <video
-                            src={videoDetails.video_url}
-                            controls
-                            className="w-full h-full"
-                            poster={videoDetails.thumbnail_url}
-                          >
-                            Your browser does not support the video tag.
-                          </video>
-                        )}
-                      </>
+                      <HLSVideoPlayer
+                        src={videoDetails.video_url}
+                        poster={videoDetails.thumbnail_url}
+                        alt={videoDetails.name}
+                        className="w-full h-full"
+                      />
                     ) : videoDetails?.thumbnail_url ? (
                       <img
                         src={videoDetails.thumbnail_url}
