@@ -146,7 +146,7 @@ export default function LandingPage() {
             {/* CTA Buttons */}
             <div className="flex flex-wrap gap-4">
               <div className="w-full space-y-3">
-                <div className="text-sm text-gray-600 font-medium">Or select from your library</div>
+                <div className="text-sm text-gray-600 font-medium">Or select from our public library</div>
                 <div className="flex gap-3 items-center">
                   <Select
                     value={selectedVideoId}
@@ -287,7 +287,7 @@ export default function LandingPage() {
           <div className="relative">
             <div className="relative rounded-3xl overflow-hidden shadow-2xl">
               <Image
-                src="/images/design-mode/hero_image.png"
+                src="/images/design-mode/hero_image_2.png"
                 alt="Hero image"
                 width={800}
                 height={800}
