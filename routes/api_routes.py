@@ -579,11 +579,11 @@ def register_routes(app):
                             end = highlight.get('end', 0)
                             duration = end - start
                             
-                            # Add caption at the beginning of each highlight
+                            # Add caption at the beginning of each highlight (absolute timestamps)
                             captions.append({
                                 'text': title,
-                                'start': 0,  # Relative to highlight start
-                                'end': min(duration, 5.0)  # Show for 5 seconds or highlight duration
+                                'start': start,  # Absolute timestamp in video
+                                'end': start + min(duration, 5.0)  # Show for 5 seconds or highlight duration
                             })
                         logger.info(f"✓ Created {len(captions)} demo captions")
                 
@@ -746,11 +746,11 @@ def register_routes(app):
                         end = highlight.get('end', 0)
                         duration = end - start
                         
-                        # Add caption at the beginning of each highlight
+                        # Add caption at the beginning of each highlight (absolute timestamps)
                         captions.append({
                             'text': title,
-                            'start': 0,  # Relative to highlight start
-                            'end': min(duration, 5.0)  # Show for 5 seconds or highlight duration
+                            'start': start,  # Absolute timestamp in video
+                            'end': start + min(duration, 5.0)  # Show for 5 seconds or highlight duration
                         })
                     logger.info(f"✓ Created {len(captions)} demo captions")
             

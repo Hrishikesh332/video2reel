@@ -6,6 +6,6 @@ flask-cors
 apscheduler
 gunicorn
 moviepy==1.0.3
-Pillow==10.1.0
-numpy==1.24.3
+Pillow>=10.2.0
+numpy>=1.26.0
 imageio-ffmpeg==0.4.9
