@@ -173,6 +173,7 @@ class VideoToReelAPI {
    * Generate highlights for a video
    */
   async generateHighlights(videoId: string, prompt?: string): Promise<ApiResponse> {
+    console.log(`[API] Calling highlights endpoint: ${this.baseUrl}/api/highlights/${videoId}`)
     const response = await fetch(`${this.baseUrl}/api/highlights/${videoId}`, {
       method: 'POST',
       headers: {
@@ -183,7 +184,9 @@ class VideoToReelAPI {
         prompt,
       }),
     })
-    return response.json()
+    const data = await response.json()
+    console.log('[API] Highlights response:', data)
+    return data
   }
 
   /**

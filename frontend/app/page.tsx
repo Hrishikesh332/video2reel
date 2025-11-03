@@ -33,7 +33,7 @@ export default function LandingPage() {
     const fetchVideos = async () => {
       setIsLoadingVideos(true)
       try {
-        const data = await api.getVideos("6908f3065289027faefed556", 1)
+        const data = await api.getVideos("69091350754d7f2962cb7284", 1)
         
         if (data.success && data.videos) {
           setVideos(data.videos)
@@ -69,7 +69,7 @@ export default function LandingPage() {
     if (selectedVideo) {
       sessionStorage.setItem("selectedVideoId", videoId)
       sessionStorage.setItem("selectedVideoFilename", selectedVideo.name)
-      sessionStorage.setItem("indexId", "6908f3065289027faefed556")
+      sessionStorage.setItem("indexId", "69091350754d7f2962cb7284")
     }
   }
 

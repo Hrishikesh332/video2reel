@@ -37,13 +37,24 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string>("")
   const [indexId, setIndexId] = useState<string>("")
 
+  // Debug: Log highlights state changes
+  useEffect(() => {
+    console.log("🔄 Highlights state changed:", highlights.length, "highlights")
+    console.log("📋 Current highlights:", highlights)
+  }, [highlights])
+
   useEffect(() => {
     const loadVideoDetails = async () => {
       const videoId = sessionStorage.getItem("selectedVideoId")
-      const storedIndexId = sessionStorage.getItem("indexId") || "6908f3065289027faefed556"
+      const storedIndexId = sessionStorage.getItem("indexId") || "69091350754d7f2962cb7284"
       setIndexId(storedIndexId)
 
+      console.log("🎬 Loading video details...")
+      console.log("📹 Video ID:", videoId)
+      console.log("📁 Index ID:", storedIndexId)
+
       if (!videoId) {
+        console.warn("⚠️ No video ID found, redirecting to home")
         router.push("/")
         return
       }
@@ -51,6 +62,8 @@ export default function AnalyzePage() {
       try {
         setIsLoadingVideo(true)
         const result = await api.getVideoDetails(storedIndexId, videoId)
+
+        console.log("📦 Video Details Response:", result)
 
         if (result.success && result.video_details) {
           const details = result.video_details
@@ -65,14 +78,18 @@ export default function AnalyzePage() {
             metadata: details.metadata,
           })
 
+          console.log("✅ Video details loaded successfully")
+          console.log("🚀 Starting analysis and highlights...")
+
           // Auto-start analysis and highlights
-          startAnalysis(videoId)
-          loadHighlights(videoId)
+          await startAnalysis(videoId)
+          await loadHighlights(videoId)
         } else {
+          console.error("❌ Failed to load video details")
           setError("Failed to load video details")
         }
       } catch (err) {
-        console.error("Error loading video:", err)
+        console.error("❌ Error loading video:", err)
         setError("Error loading video details")
       } finally {
         setIsLoadingVideo(false)
@@ -85,18 +102,25 @@ export default function AnalyzePage() {
   const startAnalysis = async (videoId: string) => {
     setIsAnalyzing(true)
     try {
+      console.log("🔍 Analyzing video:", videoId)
       const result = await api.analyzeVideo(
         videoId,
         "Analyze this video and identify the key moments, main topics, and highlight-worthy segments. Describe what makes each moment engaging and suitable for short-form content."
       )
 
+      console.log("📦 Analysis API Response:", result)
+      console.log("✅ Analysis Success:", result.success)
+      console.log("📝 Analysis text:", result.analysis)
+
       if (result.success) {
         setAnalysis(result.analysis || "Analysis completed successfully.")
+        console.log("✨ Analysis set successfully")
       } else {
         setAnalysis("Unable to generate detailed analysis at this time.")
+        console.warn("⚠️ Analysis failed or no analysis text")
       }
     } catch (err) {
-      console.error("Analysis error:", err)
+      console.error("❌ Analysis error:", err)
       setAnalysis("Analysis completed. Ready to generate reels.")
     } finally {
       setIsAnalyzing(false)
@@ -106,14 +130,30 @@ export default function AnalyzePage() {
   const loadHighlights = async (videoId: string) => {
     setIsLoadingHighlights(true)
     try {
+      console.log("🔍 Fetching highlights for video:", videoId)
       const result = await api.generateHighlights(videoId)
+      
+      console.log("📦 Highlights API Response:", JSON.stringify(result, null, 2))
+      console.log("✅ Success:", result.success)
+      console.log("📊 Highlights data:", result.highlights)
+      console.log("📈 Highlights count:", result.highlights?.length)
+      console.log("🔍 Highlights array check:", Array.isArray(result.highlights))
 
-      if (result.success && result.highlights) {
+      if (result.success && result.highlights && Array.isArray(result.highlights)) {
+        console.log("✨ Setting highlights:", result.highlights)
         setHighlights(result.highlights)
+        console.log("✅ Highlights state updated")
+      } else {
+        console.warn("⚠️ No highlights in response or success=false or not an array")
+        console.warn("Result structure:", Object.keys(result))
+        // Set empty array to clear loading state
+        setHighlights([])
       }
     } catch (err) {
-      console.error("Highlights error:", err)
+      console.error("❌ Highlights error:", err)
+      setHighlights([])
     } finally {
+      console.log("🏁 Setting isLoadingHighlights to false")
       setIsLoadingHighlights(false)
     }
   }
@@ -278,6 +318,11 @@ export default function AnalyzePage() {
 
                       {/* Highlights Tab */}
                       <TabsContent value="highlights" className="space-y-4 mt-2">
+                        {/* Debug Info */}
+                        <div className="text-xs text-gray-400 mb-2 px-2 font-mono">
+                          Debug: {isLoadingHighlights ? "Loading..." : `${highlights.length} highlights loaded`}
+                        </div>
+                        
                         {isLoadingHighlights ? (
                           <div className="bg-gray-50 rounded-2xl p-6">
                             <div className="flex items-center justify-center gap-2 text-gray-600">
@@ -378,8 +423,71 @@ export default function AnalyzePage() {
                       </TabsContent>
                     </Tabs>
 
+                    {/* Debug & Test Controls */}
+                    <div className="pt-4 mt-4 border-t border-b pb-4 bg-gray-50 rounded-lg p-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex gap-2 items-center flex-wrap">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const videoId = sessionStorage.getItem("selectedVideoId")
+                              if (videoId) {
+                                console.log("🧪 Manual highlights refresh triggered")
+                                loadHighlights(videoId)
+                              }
+                            }}
+                            disabled={isLoadingHighlights}
+                          >
+                            {isLoadingHighlights ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Refreshing...
+                              </>
+                            ) : (
+                              <>🔄 Refresh Highlights</>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log("🧪 Loading test highlights data")
+                              const testHighlights: Highlight[] = [
+                                { title: "Test Highlight 1", start: 0, end: 15 },
+                                { title: "Test Highlight 2", start: 20, end: 35 },
+                                { title: "Test Highlight 3", start: 40, end: 60 }
+                              ]
+                              setHighlights(testHighlights)
+                              console.log("✅ Test highlights set:", testHighlights)
+                            }}
+                          >
+                            🧪 Load Test Data
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              console.log("🧪 Clearing highlights")
+                              setHighlights([])
+                            }}
+                          >
+                            🗑️ Clear
+                          </Button>
+                        </div>
+                        
+                        <div className="text-xs text-gray-600 font-mono bg-white px-2 py-1 rounded border">
+                          <strong>State:</strong> {highlights.length} highlights | 
+                          <strong> Loading:</strong> {isLoadingHighlights ? 'true' : 'false'} | 
+                          <strong> Array:</strong> {Array.isArray(highlights) ? 'yes' : 'no'}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Action Button */}
-                    <div className="pt-4 mt-4 border-t">
+                    <div className="pt-4">
                       <Button
                         size="lg"
                         className="w-full bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 text-white rounded-full px-8 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
