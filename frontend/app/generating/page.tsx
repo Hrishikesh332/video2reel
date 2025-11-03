@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { api } from "@/lib/api"
+import Image from "next/image"
 
 interface Reel {
   path: string
@@ -59,7 +60,14 @@ export default function GeneratingPage() {
       {/* Header */}
       <div className="w-full max-w-7xl mx-auto mb-8">
         <div className="flex items-center gap-2 mb-6">
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-green-500 rounded-lg" />
+          <Image
+            src="/images/design-mode/logo.png"
+            alt="Reelify Logo"
+            width={40}
+            height={40}
+            className="w-8 h-8"
+            priority
+          />
           <span className="font-bold text-xl text-gray-900">Reelify</span>
         </div>
       </div>

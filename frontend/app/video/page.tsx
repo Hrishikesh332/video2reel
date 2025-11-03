@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
 import { FileVideo, Clock, Maximize2, Film, HardDrive } from "lucide-react"
 import { api } from "@/lib/api"
+import Image from "next/image"
 
 interface VideoMetadata {
   size: string
@@ -136,7 +137,14 @@ export default function VideoPage() {
       <header className="border-b bg-white/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-green-500 rounded-lg" />
+            <Image
+              src="/images/design-mode/logo.png"
+              alt="Reelify Logo"
+              width={40}
+              height={40}
+              className="w-8 h-8"
+              priority
+            />
             <span className="font-bold text-lg">Reelify</span>
           </div>
         </div>

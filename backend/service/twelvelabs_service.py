@@ -80,72 +80,246 @@ class TwelveLabsService:
             print(f"Error analyzing video {video_id}: {e}")
             raise e
     
-    def generate_highlights(self, video_id, prompt=None):
+    def generate_highlights(self, video_id, prompt=None, min_duration=20):
         """
         Generate highlights from a video using TwelveLabs analyze endpoint.
         
         Args:
             video_id: The ID of the video to generate highlights from
             prompt: Optional custom prompt to guide highlight generation
+            min_duration: Minimum duration in seconds for highlights (default: 20)
             
         Returns:
             dict: Highlights data including timestamps, titles, and descriptions
         """
         try:
             if not prompt:
-                prompt = "Create a detailed list of the top 5 most engaging and interesting moments in this video. For each moment, provide a clear title and specify the exact time range in the format [start_seconds~end_seconds]. Focus on moments that would make great short-form social media content of 15-60 seconds each."
+                prompt = f"Create a detailed list of the top 5 most engaging and interesting moments in this video. For each moment, provide a clear title and specify the exact time range in the format [start_seconds~end_seconds]. Focus on moments that would make great short-form social media content. IMPORTANT: Each moment must be at least {min_duration}-60 seconds long to work well as a reel."
+            
+            print(f"\n{'='*60}")
+            print(f"🔍 GENERATING HIGHLIGHTS FOR VIDEO: {video_id}")
+            print(f"⏱️  Minimum Duration: {min_duration} seconds")
+            print(f"📝 Prompt: {prompt[:100]}...")
+            print(f"{'='*60}\n")
             
             # Use the analyze method - this is the working method
             analysis_response = self.analyze_video(video_id, prompt)
             
-            # Parse highlights from the analysis text
-            highlights = self._parse_highlights_from_analysis(analysis_response)
+            print(f"\n{'='*60}")
+            print(f"📦 RAW ANALYSIS RESPONSE:")
+            print(f"{'='*60}")
+            print(analysis_response)
+            print(f"{'='*60}\n")
             
-            print(f"Generated {len(highlights)} highlights for video {video_id}")
+            # Parse highlights from the analysis text with minimum duration filter
+            highlights = self._parse_highlights_from_analysis(analysis_response, min_duration=min_duration)
+            
+            print(f"\n{'='*60}")
+            print(f"✨ PARSED HIGHLIGHTS: {len(highlights)} found (min {min_duration}s)")
+            print(f"{'='*60}")
+            for i, h in enumerate(highlights, 1):
+                duration = h.get('end') - h.get('start')
+                print(f"  {i}. {h.get('title')} [{h.get('start')}s ~ {h.get('end')}s] ({duration}s)")
+            print(f"{'='*60}\n")
             
             return {
                 "id": video_id,
                 "video_id": video_id,
                 "highlights": highlights,
-                "summary": analysis_response
+                "summary": analysis_response,
+                "min_duration": min_duration
             }
         except Exception as e:
-            print(f"Error generating highlights for video {video_id}: {e}")
+            print(f"❌ Error generating highlights for video {video_id}: {e}")
             import traceback
             traceback.print_exc()
             raise e
     
-    def _parse_highlights_from_analysis(self, analysis_text):
+    def _parse_highlights_from_analysis(self, analysis_text, min_duration=20):
         """
-        Parse highlights with timestamps from analysis text.
-        Expected format: **Title**: [starts (HH:MM)~ends (HH:MM)] or **Title** [starts~ends]
+        Parse highlights with timestamps from analysis text using multiple regex patterns.
+        Supports various formats that the AI might return.
+        
+        Args:
+            analysis_text: The text containing highlights with timestamps
+            min_duration: Minimum duration in seconds for a highlight (default: 20)
         """
         import re
         
         highlights = []
         
+        print(f"\n{'='*60}")
         print(f"[DEBUG] Parsing analysis text length: {len(analysis_text)}")
+        print(f"[DEBUG] Minimum duration filter: {min_duration} seconds")
+        print(f"{'='*60}\n")
         
-        # Pattern to match multiple timestamp formats with optional colon:
-        # **Title**: [0s (00:00)~9s (00:09)], **Title** [21s~42s], etc.
-        pattern = r'\*\*(.+?)\*\*:?\s*\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]'
+        # Define multiple regex patterns to handle different AI response formats
+        # IMPORTANT: Order matters - more specific patterns first!
+        regex_patterns = [
+            # Format 1: **Title:** "Actual Title"\n   - **Time Range:** [21s (00:21)~34s (00:34)]
+            # This is the MOST SPECIFIC pattern for the numbered list format
+            {
+                'name': 'Format 1: Quoted title with Time Range label',
+                'pattern': r'\*\*Title:\*\*\s*"([^"]+)".*?\*\*Time Range:\*\*\s*\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]',
+                'groups': ('title', 'start', 'end')
+            },
+            # Format 2: **Title:** "Actual Title" [21s~34s] (inline, no label)
+            {
+                'name': 'Format 2: Quoted title inline',
+                'pattern': r'\*\*Title:\*\*\s*"([^"]+)"\s*\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]',
+                'groups': ('title', 'start', 'end')
+            },
+            # Format 3: [21s~34s] **Title** (time first)
+            {
+                'name': 'Format 3: Time range before title',
+                'pattern': r'\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]\s*\*\*([^*]+?)\*\*',
+                'groups': ('start', 'end', 'title')
+            },
+            # Format 4: **Title**: [21s~34s] (colon after title)
+            {
+                'name': 'Format 4: Title with colon',
+                'pattern': r'\*\*([^*]+?)\*\*:\s*\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]',
+                'groups': ('title', 'start', 'end')
+            },
+            # Format 5: **Title** [21s~34s] (no colon)
+            {
+                'name': 'Format 5: Title without colon',
+                'pattern': r'\*\*([^*]+?)\*\*\s*\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]',
+                'groups': ('title', 'start', 'end')
+            }
+        ]
         
-        matches = re.findall(pattern, analysis_text)
+        total_matches = 0
+        filtered_count = 0
         
-        print(f"[DEBUG] Regex matches found: {len(matches)}")
+        # Try each pattern
+        for pattern_info in regex_patterns:
+            pattern = pattern_info['pattern']
+            name = pattern_info['name']
+            groups = pattern_info['groups']
+            
+            matches = re.findall(pattern, analysis_text, re.IGNORECASE)
+            
+            if matches:
+                print(f"✅ {name}")
+                print(f"   Found {len(matches)} match(es)")
+                total_matches += len(matches)
+                
+                for match in matches:
+                    # Map the groups based on the pattern
+                    data = dict(zip(groups, match))
+                    title = data['title'].strip()
+                    start = float(data['start'])
+                    end = float(data['end'])
+                    duration = end - start
+                    
+                    # Clean up title
+                    title = title.strip('"\'').strip()
+                    # Remove common prefixes and suffixes
+                    title = re.sub(r'^(Title:|Time Range:|Segment \d+:|Description:)\s*', '', title, flags=re.IGNORECASE)
+                    # Remove trailing punctuation and whitespace
+                    title = re.sub(r'[,.\s]+$', '', title)
+                    # Remove leading numbers (e.g., "1. Title" -> "Title")
+                    title = re.sub(r'^\d+\.\s*', '', title)
+                    # Limit title length
+                    if len(title) > 80:
+                        title = title[:77] + '...'
+                    
+                    # Skip if title is too short or just punctuation
+                    if len(title) < 3 or not any(c.isalnum() for c in title):
+                        print(f"   ⏭️  Skipped invalid title: '{title}'")
+                        continue
+                    
+                    print(f"   📌 '{title}' [{start}s ~ {end}s] (Duration: {duration}s)")
+                    
+                    # Only include highlights with minimum duration
+                    if duration >= min_duration:
+                        # Check for duplicates
+                        is_duplicate = any(
+                            h['start'] == start and h['end'] == end 
+                            for h in highlights
+                        )
+                        
+                        if not is_duplicate:
+                            highlights.append({
+                                'title': title,
+                                'start': start,
+                                'end': end
+                            })
+                            print(f"      ✅ Kept (duration: {duration}s >= {min_duration}s)")
+                        else:
+                            print(f"      ⏭️  Skipped (duplicate)")
+                    else:
+                        filtered_count += 1
+                        print(f"      ⏭️  Filtered out (duration: {duration}s < {min_duration}s)")
+                
+                print()  # Empty line for readability
         
-        for match in matches:
-            title, start_time, end_time = match
-            print(f"[DEBUG] Matched - Title: '{title}', Start: {start_time}, End: {end_time}")
-            highlights.append({
-                'title': title.strip(),
-                'start': float(start_time),
-                'end': float(end_time)
-            })
+        print(f"{'='*60}")
+        print(f"📊 PARSING SUMMARY:")
+        print(f"   Total matches found: {total_matches}")
+        print(f"   Highlights kept: {len(highlights)}")
+        print(f"   Filtered out (too short): {filtered_count}")
+        print(f"{'='*60}\n")
         
-        print(f"Parsed {len(highlights)} highlights from analysis")
+        # If no highlights found with regex, try to extract from numbered list
+        if len(highlights) == 0:
+            print("⚠️  No matches with regex patterns. Trying numbered list extraction...")
+            highlights = self._extract_from_numbered_list(analysis_text, min_duration)
         
-        # If no highlights found, return empty list (caller will handle error)
+        return highlights
+    
+    def _extract_from_numbered_list(self, text, min_duration=20):
+        """
+        Fallback method to extract highlights from numbered lists.
+        Format: 1. **Title:** "Name" ... [21s~34s]
+        """
+        import re
+        
+        highlights = []
+        
+        # Split by numbered items (1., 2., 3., etc.)
+        items = re.split(r'\n\s*\d+\.\s+', text)
+        
+        for item in items[1:]:  # Skip first item (before any numbering)
+            # Try multiple title extraction methods
+            title = None
+            
+            # Method 1: **Title:** "Quoted Title"
+            title_match = re.search(r'\*\*Title:\*\*\s*"([^"]+)"', item, re.IGNORECASE)
+            if title_match:
+                title = title_match.group(1).strip()
+            else:
+                # Method 2: First bold text **Title**
+                title_match = re.search(r'\*\*([^*]+?)\*\*', item)
+                if title_match:
+                    title = title_match.group(1).strip()
+                    # Remove common prefixes
+                    title = re.sub(r'^(Title:|Description:)\s*', '', title, flags=re.IGNORECASE)
+            
+            # Try to find ANY timestamp in the item [XXs~YYs]
+            time_match = re.search(r'\[(\d+)s?\s*(?:\([^)]+\))?\s*~\s*(\d+)s?\s*(?:\([^)]+\))?\]', item)
+            
+            if title and time_match:
+                start = float(time_match.group(1))
+                end = float(time_match.group(2))
+                duration = end - start
+                
+                # Clean up title
+                title = title.strip('"\'').strip()
+                title = re.sub(r'[,.\s]+$', '', title)
+                
+                print(f"   📌 Extracted: '{title}' [{start}s ~ {end}s] (Duration: {duration}s)")
+                
+                if duration >= min_duration:
+                    highlights.append({
+                        'title': title,
+                        'start': start,
+                        'end': end
+                    })
+                    print(f"      ✅ Kept")
+        
+        print(f"\n   Extracted {len(highlights)} highlights from numbered list\n")
         return highlights
     
     def _generate_highlights_via_rest(self, video_id, prompt=None):

@@ -307,21 +307,39 @@ def register_routes(app):
             # Try client API key first, then fall back to environment
             api_key = data.get('api_key') or app.config.get('TWELVELABS_API_KEY_ENV')
             prompt = data.get('prompt')  # Optional custom prompt
+            min_duration = data.get('min_duration', 20)  # Minimum highlight duration in seconds (default: 20)
             
             if not api_key or api_key == '':
                 return jsonify({'success': False, 'error': 'TwelveLabs API key is required. Please connect your API key in the UI or set TWELVELABS_API_KEY in environment variables.'}), 400
             
+            logger.info(f"[DEBUG] Generating highlights with min_duration: {min_duration}s")
+            
             # Create service with provided API key
             service = TwelveLabsService(api_key=api_key)
-            highlights = service.generate_highlights(video_id, prompt)
+            highlights_data = service.generate_highlights(video_id, prompt, min_duration=min_duration)
+            
+            logger.info(f"[DEBUG] Highlights response from service: {highlights_data}")
+            logger.info(f"[DEBUG] Highlights type: {type(highlights_data)}")
+            
+            # The service returns a dict with 'highlights' key
+            highlights_list = highlights_data.get('highlights', []) if isinstance(highlights_data, dict) else []
+            
+            logger.info(f"[DEBUG] Extracted highlights list: {highlights_list}")
+            logger.info(f"[DEBUG] Highlights count: {len(highlights_list)}")
+            logger.info(f"[DEBUG] All highlights >= {min_duration}s duration")
             
             return jsonify({
                 'success': True,
-                'highlights': highlights
+                'highlights': highlights_list,
+                'video_id': video_id,
+                'min_duration': min_duration,
+                'summary': highlights_data.get('summary') if isinstance(highlights_data, dict) else None
             })
             
         except Exception as e:
             logger.error(f"Error generating highlights for video {video_id}: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
             return jsonify({'success': False, 'error': str(e)}), 500
 
     @app.route('/api/transcription/<index_id>/<video_id>', methods=['POST'])
