@@ -203,97 +203,172 @@ class VideoEditorService:
         self,
         text: str,
         duration: float,
-        position: Tuple[str, str] = ('center', 'bottom'),
-        font_size: int = 60,
-        color: str = 'white',
-        bg_color: str = 'black',
+        position: Tuple[str, str] = ('center', 0.85),
+        font_size: int = 80,
+        color: str = 'yellow',
+        stroke_color: str = 'black',
+        stroke_width: int = 3,
         method: str = 'caption'
     ) -> TextClip:
         """
-        Create a text clip for captions.
+        Create a modern text clip for captions with cool styling.
         
         Args:
             text: Caption text
             duration: Duration of the caption in seconds
-            position: Position of the caption (e.g., ('center', 'bottom'))
+            position: Position of the caption (default: bottom center)
             font_size: Font size for the caption
             color: Text color
-            bg_color: Background color
+            stroke_color: Outline/stroke color
+            stroke_width: Width of the text stroke
             method: 'caption' for word-by-word or 'label' for full text
             
         Returns:
             TextClip: The caption clip
         """
         try:
+            # Clean and format text - limit to 2-3 words per line for readability
+            words = text.strip().split()
+            
+            # Format text with 2-3 words per line for better mobile viewing
+            formatted_lines = []
+            for i in range(0, len(words), 3):
+                line = ' '.join(words[i:i+3])
+                formatted_lines.append(line.upper())  # Uppercase for impact
+            
+            formatted_text = '\n'.join(formatted_lines)
+            
+            # Create text clip with stroke effect
             txt_clip = TextClip(
-                text,
+                formatted_text,
                 fontsize=font_size,
                 color=color,
-                bg_color=bg_color,
-                size=(self.REEL_WIDTH - 100, None),  # Leave margins
+                stroke_color=stroke_color,
+                stroke_width=stroke_width,
+                size=(self.REEL_WIDTH - 120, None),  # Leave margins
                 method=method,
-                align='center'
+                align='center',
+                font='Impact',  # Bold, modern font (Impact, Arial-Bold, or Helvetica-Bold)
+                kerning=2  # Letter spacing for better readability
             )
             txt_clip = txt_clip.set_duration(duration)
-            txt_clip = txt_clip.set_position(position)
+            
+            # Position at bottom center (0.85 = 85% down from top)
+            if isinstance(position, tuple) and len(position) == 2:
+                txt_clip = txt_clip.set_position(position, relative=True)
+            else:
+                txt_clip = txt_clip.set_position(position)
             
             return txt_clip
         except Exception as e:
             logger.error(f"Error creating caption clip: {str(e)}")
-            raise
+            # Fallback to simpler caption if fancy one fails
+            try:
+                txt_clip = TextClip(
+                    text.upper(),
+                    fontsize=font_size,
+                    color=color,
+                    size=(self.REEL_WIDTH - 120, None),
+                    method='caption',
+                    align='center',
+                    font='Arial-Bold'
+                )
+                txt_clip = txt_clip.set_duration(duration)
+                txt_clip = txt_clip.set_position(('center', 0.85), relative=True)
+                return txt_clip
+            except Exception as e2:
+                logger.error(f"Error creating fallback caption: {str(e2)}")
+                raise
     
     def add_captions(
         self,
         clip: VideoFileClip,
         captions: List[Dict[str, any]],
-        font_size: int = 60,
-        color: str = 'white',
-        bg_color: str = 'black'
+        font_size: int = 80,
+        color: str = 'yellow',
+        stroke_color: str = 'black',
+        stroke_width: int = 3
     ) -> VideoFileClip:
         """
-        Add captions to a video clip.
+        Add synchronized captions to a video clip with modern styling.
+        Captions will change as per speech timing for better engagement.
         
         Args:
             clip: The video clip to add captions to
             captions: List of caption dictionaries with 'text', 'start', 'end' keys
             font_size: Font size for captions
-            color: Text color
-            bg_color: Background color for text
+            color: Text color (default: yellow for high visibility)
+            stroke_color: Stroke/outline color
+            stroke_width: Width of the stroke
             
         Returns:
-            VideoFileClip: Clip with captions overlaid
+            VideoFileClip: Clip with synchronized captions overlaid
         """
         try:
-            logger.info(f"Adding {len(captions)} captions to video")
+            logger.info(f"Adding {len(captions)} synchronized captions to video")
+            
+            if not captions:
+                logger.warning("No captions provided, returning original clip")
+                return clip
             
             caption_clips = []
-            for caption in captions:
-                text = caption.get('text', '')
+            
+            for i, caption in enumerate(captions):
+                text = caption.get('text', '').strip()
                 start = caption.get('start', 0)
-                end = caption.get('end', clip.duration)
+                end = caption.get('end', start + 2.0)  # Default 2 second duration
                 duration = end - start
                 
-                if text and duration > 0:
+                # Skip empty captions or invalid timings
+                if not text or duration <= 0 or start < 0 or start >= clip.duration:
+                    continue
+                
+                # Ensure caption doesn't exceed clip duration
+                if end > clip.duration:
+                    end = clip.duration
+                    duration = end - start
+                
+                # Skip if duration is too short (less than 0.1 seconds)
+                if duration < 0.1:
+                    continue
+                
+                try:
                     txt_clip = self.create_caption_clip(
                         text=text,
                         duration=duration,
                         font_size=font_size,
                         color=color,
-                        bg_color=bg_color
+                        stroke_color=stroke_color,
+                        stroke_width=stroke_width
                     )
                     txt_clip = txt_clip.set_start(start)
                     caption_clips.append(txt_clip)
+                    
+                    # Log for debugging
+                    if i < 3 or i == len(captions) - 1:  # Log first 3 and last caption
+                        logger.info(f"Caption {i+1}: '{text[:30]}...' at {start:.2f}s-{end:.2f}s ({duration:.2f}s)")
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to create caption {i+1} '{text[:30]}': {str(e)}")
+                    continue
             
             if caption_clips:
+                logger.info(f"Successfully created {len(caption_clips)} caption clips")
                 # Composite video with captions
                 final_clip = CompositeVideoClip([clip] + caption_clips)
+                final_clip.duration = clip.duration
+                final_clip.fps = clip.fps
                 return final_clip
             else:
+                logger.warning("No valid caption clips created, returning original clip")
                 return clip
                 
         except Exception as e:
             logger.error(f"Error adding captions: {str(e)}")
-            raise
+            import traceback
+            traceback.print_exc()
+            # Return original clip if caption addition fails
+            return clip
     
     def process_highlight_to_reel(
         self,
@@ -336,20 +411,44 @@ class VideoEditorService:
             if add_captions and captions:
                 # Adjust caption timestamps relative to clip start
                 adjusted_captions = []
+                clip_duration = end_time - start_time
+                
+                logger.info(f"Processing {len(captions)} captions for highlight {start_time}s-{end_time}s")
+                
                 for cap in captions:
-                    cap_start = cap.get('start', 0) - start_time
-                    cap_end = cap.get('end', 0) - start_time
+                    # Get absolute timestamps from original video
+                    cap_start_abs = cap.get('start', 0)
+                    cap_end_abs = cap.get('end', cap_start_abs + 2.0)
                     
-                    # Only include captions within this clip's timeframe
-                    if cap_start >= 0 and cap_start < (end_time - start_time):
-                        adjusted_captions.append({
-                            'text': cap.get('text', ''),
-                            'start': max(0, cap_start),
-                            'end': min(end_time - start_time, cap_end)
-                        })
+                    # Convert to relative timestamps (relative to highlight start)
+                    cap_start = cap_start_abs - start_time
+                    cap_end = cap_end_abs - start_time
+                    
+                    # Only include captions that appear during this highlight
+                    # Caption must start before the highlight ends and end after the highlight starts
+                    if cap_end > 0 and cap_start < clip_duration:
+                        # Clamp the caption timing to the highlight boundaries
+                        adjusted_start = max(0, cap_start)
+                        adjusted_end = min(clip_duration, cap_end)
+                        
+                        # Only add if there's a valid duration
+                        if adjusted_end > adjusted_start:
+                            adjusted_captions.append({
+                                'text': cap.get('text', ''),
+                                'start': adjusted_start,
+                                'end': adjusted_end
+                            })
+                
+                logger.info(f"Found {len(adjusted_captions)} captions within this highlight timeframe")
                 
                 if adjusted_captions:
+                    # Log sample captions for debugging
+                    for i, cap in enumerate(adjusted_captions[:3]):
+                        logger.info(f"  Caption {i+1}: '{cap['text'][:40]}...' at {cap['start']:.2f}s-{cap['end']:.2f}s")
+                    
                     clip = self.add_captions(clip, adjusted_captions)
+                else:
+                    logger.warning("No captions found within highlight timeframe")
             
             # Generate output path
             if not output_filename:
