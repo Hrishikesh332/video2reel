@@ -12,9 +12,14 @@ import { api } from "@/lib/api"
 
 interface VideoType {
   id: string
-  filename: string
+  name: string
   duration: number
-  created_at: string
+  thumbnail_url?: string
+  video_url?: string
+  width?: number
+  height?: number
+  fps?: number
+  size?: number
 }
 
 export default function LandingPage() {
@@ -23,7 +28,6 @@ export default function LandingPage() {
   const [videos, setVideos] = useState<VideoType[]>([])
   const [isLoadingVideos, setIsLoadingVideos] = useState(false)
   const [selectedVideoId, setSelectedVideoId] = useState<string>("")
-  const [isProcessing, setIsProcessing] = useState(false)
 
   useEffect(() => {
     const fetchVideos = async () => {
@@ -59,37 +63,22 @@ export default function LandingPage() {
     }
   }
 
-  const handleVideoSelect = async (videoId: string) => {
+  const handleVideoSelect = (videoId: string) => {
     setSelectedVideoId(videoId)
     const selectedVideo = videos.find((v) => v.id === videoId)
-    if (!selectedVideo) return
-
-    setIsProcessing(true)
-
-    try {
+    if (selectedVideo) {
       sessionStorage.setItem("selectedVideoId", videoId)
-      sessionStorage.setItem("selectedVideoFilename", selectedVideo.filename)
-      sessionStorage.setItem("processingFromLibrary", "true")
-
-      const data = await api.selectAndProcess(videoId, {
-        add_captions: true,
-        resize_method: "crop",
-      })
-
-      if (data.success) {
-        sessionStorage.setItem("generatedReels", JSON.stringify(data.reels))
-        sessionStorage.setItem("reelsCount", data.reels_created.toString())
-        router.push("/generating")
-      } else {
-        console.error("API Error:", data.error)
-        alert("Failed to generate reels. Please try again.")
-        setIsProcessing(false)
-      }
-    } catch (error) {
-      console.error("Error processing video:", error)
-      alert("An error occurred while processing the video. Please try again.")
-      setIsProcessing(false)
+      sessionStorage.setItem("selectedVideoFilename", selectedVideo.name)
+      sessionStorage.setItem("indexId", "6908f3065289027faefed556")
     }
+  }
+
+  const handleGenerateReel = () => {
+    if (!selectedVideoId) {
+      alert("Please select a video first")
+      return
+    }
+    router.push("/analyze")
   }
 
   return (
@@ -180,31 +169,109 @@ export default function LandingPage() {
             <div className="flex flex-wrap gap-4">
               <div className="w-full space-y-3">
                 <div className="text-sm text-gray-600 font-medium">Or select from your library</div>
-                <Select
-                  value={selectedVideoId}
-                  onValueChange={handleVideoSelect}
-                  disabled={isLoadingVideos || isProcessing}
-                >
-                  <SelectTrigger className="w-full max-w-md bg-white rounded-full h-12 px-6 border-2 border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50">
-                    <SelectValue
-                      placeholder={
-                        isProcessing ? "Processing video..." : isLoadingVideos ? "Loading videos..." : "Select a video"
-                      }
-                    />
-                  </SelectTrigger>
-                  <SelectContent className="max-w-md">
+                <div className="flex gap-3 items-center">
+                  <Select
+                    value={selectedVideoId}
+                    onValueChange={handleVideoSelect}
+                    disabled={isLoadingVideos}
+                  >
+                    <SelectTrigger className="flex-1 max-w-md bg-white rounded-full h-12 px-6 border-2 border-gray-200 hover:border-gray-300 transition-colors disabled:opacity-50">
+                      <SelectValue
+                        placeholder={isLoadingVideos ? "Loading videos..." : "Select a video"}
+                      />
+                    </SelectTrigger>
+                  <SelectContent className="max-w-2xl">
                     {videos.map((video) => (
                       <SelectItem key={video.id} value={video.id} className="cursor-pointer">
-                        <div className="flex items-center gap-3 py-1">
-                          <div className="w-10 h-10 bg-[#e8f5e3] rounded-lg flex items-center justify-center flex-shrink-0">
-                            {/* Video icon */}
+                        <div className="flex items-center gap-3 py-2">
+                          {/* Thumbnail */}
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden">
+                            {video.thumbnail_url ? (
+                              <img
+                                src={video.thumbnail_url}
+                                alt={video.name}
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = "none"
+                                  e.currentTarget.parentElement!.innerHTML = `<svg class="w-8 h-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`
+                                }}
+                              />
+                            ) : (
+                              <svg
+                                className="w-8 h-8 text-gray-400"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                />
+                              </svg>
+                            )}
                           </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className="font-medium text-sm truncate">{video.filename}</span>
-                            <span className="text-xs text-gray-500">
-                              {Math.floor(video.duration / 60)}:
-                              {String(Math.floor(video.duration % 60)).padStart(2, "0")} min
+                          {/* Video Info */}
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="font-medium text-sm truncate" title={video.name}>
+                              {video.name}
                             </span>
+                            <div className="flex items-center gap-3 text-xs text-gray-500 mt-1">
+                              <span className="flex items-center gap-1">
+                                <svg
+                                  className="w-3 h-3"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                  />
+                                </svg>
+                                {Math.floor(video.duration / 60)}:
+                                {String(Math.floor(video.duration % 60)).padStart(2, "0")}
+                              </span>
+                              {video.width && video.height && (
+                                <span className="flex items-center gap-1">
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5v-4m0 4h-4m4 0l-5-5"
+                                    />
+                                  </svg>
+                                  {video.width}×{video.height}
+                                </span>
+                              )}
+                              {video.size && (
+                                <span className="flex items-center gap-1">
+                                  <svg
+                                    className="w-3 h-3"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                  >
+                                    <path
+                                      strokeLinecap="round"
+                                      strokeLinejoin="round"
+                                      strokeWidth={2}
+                                      d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                                    />
+                                  </svg>
+                                  {(video.size / (1024 * 1024)).toFixed(1)} MB
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </SelectItem>
@@ -216,12 +283,16 @@ export default function LandingPage() {
                     )}
                   </SelectContent>
                 </Select>
-                {isProcessing && (
-                  <div className="text-sm text-gray-600 flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                    Starting reel generation...
-                  </div>
+                {selectedVideoId && (
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-green-500 hover:from-blue-700 hover:to-green-600 text-white rounded-full px-8"
+                    onClick={handleGenerateReel}
+                  >
+                    Generate Reel
+                  </Button>
                 )}
+                </div>
               </div>
 
               <Button

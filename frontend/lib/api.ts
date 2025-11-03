@@ -103,6 +103,7 @@ class VideoToReelAPI {
 
   /**
    * Get videos from a specific index
+   * Returns videos with: id, name, duration, thumbnail_url, video_url, width, height, fps, size
    */
   async getVideos(indexId: string, page: number = 1): Promise<ApiResponse> {
     const response = await fetch(`${this.baseUrl}/api/videos`, {

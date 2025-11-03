@@ -118,6 +118,13 @@ const fetchVideos = async () => {
   
   if (result.success) {
     setVideos(result.videos)
+    // Each video includes:
+    // - id: string
+    // - name: string (filename)
+    // - duration: number (seconds)
+    // - thumbnail_url: string (optional)
+    // - video_url: string (optional)
+    // - width, height, fps, size (optional)
   }
 }
 ```
