@@ -93,29 +93,7 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-green-500 rounded-lg" />
               <span className="font-bold text-lg">Reelify</span>
             </div>
-            <nav className="hidden md:flex items-center gap-6 text-sm">
-              <a href="#" className="hover:text-gray-900 transition-colors">
-                Product
-              </a>
-              <span className="text-gray-300">.</span>
-              <a href="#" className="hover:text-gray-900 transition-colors">
-                Solutions
-              </a>
-              <span className="text-gray-300">.</span>
-              <a href="#" className="hover:text-gray-900 transition-colors">
-                Pricing
-              </a>
-              <span className="text-gray-300">.</span>
-              <a href="#" className="hover:text-gray-900 transition-colors">
-                Developers
-              </a>
-            </nav>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" className="hidden md:inline-flex">
-              Log in
-            </Button>
-            <Button className="bg-black hover:bg-black/90 text-white rounded-full px-6">Get it Now — It's Free</Button>
+            
           </div>
         </div>
       </header>
@@ -139,7 +117,7 @@ export default function LandingPage() {
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-7xl lg:text-8xl font-bold leading-none tracking-tight">Reels</h1>
+            <h1 className="text-7xl lg:text-8xl font-bold leading-none tracking-tight">Reelify</h1>
 
             <div className="w-full h-px bg-gray-300" />
 
@@ -309,7 +287,7 @@ export default function LandingPage() {
           <div className="relative">
             <div className="relative rounded-3xl overflow-hidden shadow-2xl">
               <Image
-                src="/images/design-mode/Screenshot%202025-11-03%20at%2020.21.47.png"
+                src="/images/design-mode/hero_image.png"
                 alt="Hero image"
                 width={800}
                 height={800}
